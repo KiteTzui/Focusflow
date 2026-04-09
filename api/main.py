@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database.db import init_db
-from api.config import CORS_ORIGINS
+from api.config import CORS_ORIGINS, ALLOW_ORIGIN_REGEX
 from api.models import User, Task, StudySession, Distraction
 
 # Initialize database
