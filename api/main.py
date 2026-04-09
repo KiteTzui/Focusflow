@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database.db import init_db
+from api.config import CORS_ORIGINS
 from api.models import User, Task, StudySession, Distraction
 
 # Initialize database
@@ -22,7 +23,7 @@ app = FastAPI(title="FocusFlow API", version="1.0.0")
 # Add CORS middleware to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
