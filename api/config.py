@@ -16,13 +16,15 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # CORS Configuration
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+ALLOW_ORIGIN_REGEX = r"^https://.*\.vercel\.app$"
+
 CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8080",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8080",
-    "https://*.vercel.app",
-    os.getenv("FRONTEND_URL", "http://localhost:3000")
+    FRONTEND_URL
 ]
 
 # API Configuration
