@@ -1,8 +1,17 @@
 <template>
   <div id="app" class="app">
-    <Navigation v-if="shouldShowNav && isNavOpen" />
+    <div v-if="showSplash" class="splash-screen">
+      <div class="splash-content">
+        <img src="/logo.png" alt="FocusFlow logo" class="splash-logo" />
+        <h1>FocusFlow</h1>
+        <p>Loading your workspace...</p>
+        <div class="splash-spinner"></div>
+      </div>
+    </div>
 
-    <main :class="['content', { 'content-full': !shouldShowNav || !isNavOpen }]">
+    <Navigation v-if="!showSplash && shouldShowNav && isNavOpen" />
+
+    <main v-if="!showSplash" :class="['content', { 'content-full': !shouldShowNav || !isNavOpen }]">
       <header v-if="shouldShowNav" class="app-topbar">
         <button class="nav-toggle" @click="toggleNav">
           {{ isNavOpen ? 'Hide menu' : 'Show menu' }}
@@ -15,7 +24,7 @@
 </template>
 
 <script>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import Navigation from './components/Navigation.vue';
 
@@ -28,6 +37,7 @@ export default {
     const route = useRoute();
     const shouldShowNav = computed(() => route.path !== '/login' && route.path !== '/signup');
     const isNavOpen = ref(shouldShowNav.value);
+    const showSplash = ref(true);
 
     watch(shouldShowNav, (value, oldValue) => {
       if (!value) {
@@ -37,6 +47,12 @@ export default {
       }
     });
 
+    onMounted(() => {
+      setTimeout(() => {
+        showSplash.value = false;
+      }, 1200);
+    });
+
     const toggleNav = () => {
       isNavOpen.value = !isNavOpen.value;
     };
@@ -44,7 +60,8 @@ export default {
     return {
       isNavOpen,
       shouldShowNav,
-      toggleNav
+      toggleNav,
+      showSplash
     };
   }
 };
@@ -87,6 +104,62 @@ export default {
   font-weight: 600;
   box-shadow: 0 12px 30px rgba(37, 99, 235, 0.18);
   cursor: pointer;
+}
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: linear-gradient(135deg, #dbeafe 0%, #a5f3fc 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.splash-content {
+  text-align: center;
+  color: #0f172a;
+  max-width: 320px;
+}
+
+.splash-logo {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 18px;
+  display: block;
+  object-fit: contain;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 16px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.splash-content h1 {
+  margin: 16px 0 8px;
+  font-size: 32px;
+  letter-spacing: 2px;
+}
+
+.splash-content p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.splash-spinner {
+  width: 58px;
+  height: 58px;
+  margin: 22px auto 0;
+  border: 6px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1024px) {
