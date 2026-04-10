@@ -32,6 +32,18 @@ export const userAPI = {
   },
   getDashboard(userId) {
     return api.get(`/dashboard/${userId}`);
+  },
+  getRewards(userId) {
+    return api.get(`/users/${userId}/rewards`);
+  },
+  checkIn(userId) {
+    return api.post(`/users/${userId}/check-in`);
+  },
+  purchaseBorder(userId, itemId) {
+    return api.post(`/users/${userId}/purchase-border`, { item_id: itemId });
+  },
+  selectBorder(userId, itemId) {
+    return api.post(`/users/${userId}/select-border`, { item_id: itemId });
   }
 };
 

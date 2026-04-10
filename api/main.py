@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import bcrypt
 import sys
 import os
@@ -50,6 +50,10 @@ class UserProfile(BaseModel):
     total_study_time: int
     tasks_completed: int
     daily_goal: int
+    points: int = 0
+    selected_border: Optional[str] = None
+    owned_borders: Optional[str] = None
+    last_check_in: Optional[str] = None
     created_at: str
 
 class TaskCreate(BaseModel):
@@ -115,6 +119,26 @@ class DashboardStats(BaseModel):
     distractions: int
     active_tasks: int
 
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    level: Optional[str] = None
+    streak: Optional[int] = None
+    total_study_time: Optional[int] = None
+    tasks_completed: Optional[int] = None
+    daily_goal: Optional[int] = None
+    points: Optional[int] = None
+    selected_border: Optional[str] = None
+    owned_borders: Optional[str] = None
+    last_check_in: Optional[str] = None
+    last_goal_reward_date: Optional[str] = None
+
+class PurchaseItem(BaseModel):
+    item_id: str
+
+class SelectBorder(BaseModel):
+    item_id: str
+
 # ============ UTILITY FUNCTIONS ============
 
 def hash_password(password: str) -> str:
@@ -125,6 +149,54 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     """Verify password against hash"""
     return bcrypt.checkpw(password.encode(), hashed.encode())
+
+BORDER_ITEMS = [
+    {
+        'id': 'blue-glow',
+        'name': 'Ocean Glow',
+        'cost': 30,
+        'css': 'border-blue',
+        'description': 'A cool blue glow for your profile avatar.'
+    },
+    {
+        'id': 'gold-ring',
+        'name': 'Golden Ring',
+        'cost': 60,
+        'css': 'border-gold',
+        'description': 'A premium golden frame for your profile.'
+    },
+    {
+        'id': 'sparkle',
+        'name': 'Sparkle Frame',
+        'cost': 100,
+        'css': 'border-sparkle',
+        'description': 'A sparkling reward border.'
+    }
+]
+
+
+def parse_owned_borders(raw: Optional[str]) -> List[str]:
+    if not raw:
+        return []
+    return [item for item in raw.split(',') if item.strip()]
+
+
+def build_store_items(user):
+    owned = set(parse_owned_borders(user.get('owned_borders')))
+    selected = user.get('selected_border')
+    items = []
+    for item in BORDER_ITEMS:
+        items.append({
+            'id': item['id'],
+            'name': item['name'],
+            'cost': item['cost'],
+            'css': item['css'],
+            'description': item['description'],
+            'owned': item['id'] in owned,
+            'selected': item['id'] == selected
+        })
+    return items
+
 
 def format_user(user_dict) -> UserProfile:
     """Format user dict to response"""
@@ -139,6 +211,10 @@ def format_user(user_dict) -> UserProfile:
         total_study_time=user_dict['total_study_time'],
         tasks_completed=user_dict['tasks_completed'],
         daily_goal=user_dict['daily_goal'],
+        points=user_dict.get('points', 0),
+        selected_border=user_dict.get('selected_border'),
+        owned_borders=user_dict.get('owned_borders'),
+        last_check_in=user_dict.get('last_check_in'),
         created_at=user_dict['created_at']
     )
 
@@ -194,12 +270,107 @@ async def get_user(user_id: int):
     return format_user(user)
 
 @app.put("/api/users/{user_id}")
-async def update_user(user_id: int, updates: dict):
+async def update_user(user_id: int, updates: UserUpdate):
     """Update user profile"""
-    if User.update_profile(user_id, **updates):
+    user = User.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    update_data = updates.dict(exclude_unset=True)
+
+    if 'username' in update_data and update_data['username'] != user['username']:
+        existing = User.get_by_username(update_data['username'])
+        if existing and existing['id'] != user_id:
+            raise HTTPException(status_code=400, detail="Username already taken")
+
+    if 'email' in update_data and update_data['email'] != user['email']:
+        existing = User.get_by_email(update_data['email'])
+        if existing and existing['id'] != user_id:
+            raise HTTPException(status_code=400, detail="Email already taken")
+
+    if User.update_profile(user_id, **update_data):
         user = User.get_by_id(user_id)
         return format_user(user)
-    raise HTTPException(status_code=500, detail="Error updating user")
+    raise HTTPException(status_code=400, detail="No changes to update")
+
+@app.get("/api/users/{user_id}/rewards")
+async def get_user_rewards(user_id: int):
+    """Get user reward information and available store items"""
+    user = User.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "points": user.get('points', 0),
+        "selected_border": user.get('selected_border'),
+        "owned_borders": parse_owned_borders(user.get('owned_borders')),
+        "store_items": build_store_items(user)
+    }
+
+@app.post("/api/users/{user_id}/check-in")
+@app.post("/api/users/{user_id}/checkin")
+async def daily_check_in(user_id: int):
+    """Daily check-in to earn points"""
+    user = User.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    today = datetime.utcnow().date().isoformat()
+    yesterday = (datetime.utcnow().date() - timedelta(days=1)).isoformat()
+    if user.get('last_check_in') == today:
+        raise HTTPException(status_code=400, detail="Already checked in today")
+
+    streak = 1
+    if user.get('last_check_in') == yesterday:
+        streak = (user.get('streak') or 0) + 1
+
+    points = (user.get('points') or 0) + 10
+    User.update_profile(user_id, points=points, streak=streak, last_check_in=today)
+    user = User.get_by_id(user_id)
+    return {
+        "message": "Daily check-in complete! +10 points",
+        "points": user.get('points', 0),
+        "streak": user.get('streak', 0),
+        "last_check_in": user.get('last_check_in')
+    }
+
+@app.post("/api/users/{user_id}/purchase-border")
+async def purchase_border(user_id: int, item: PurchaseItem):
+    """Purchase a profile border from the store"""
+    user = User.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    item_data = next((item for item in BORDER_ITEMS if item['id'] == item.item_id), None)
+    if not item_data:
+        raise HTTPException(status_code=404, detail="Border not found")
+
+    owned = set(parse_owned_borders(user.get('owned_borders')))
+    if item_data['id'] in owned:
+        return {"message": "Border already owned", "points": user.get('points', 0), "owned_borders": list(owned)}
+
+    if user.get('points', 0) < item_data['cost']:
+        raise HTTPException(status_code=400, detail="Not enough points to purchase this border")
+
+    owned.add(item_data['id'])
+    points = user.get('points', 0) - item_data['cost']
+    owned_borders = ','.join(sorted(owned))
+    User.update_profile(user_id, points=points, owned_borders=owned_borders)
+    return {"message": f"Purchased {item_data['name']}!", "points": points, "owned_borders": list(owned)}
+
+@app.post("/api/users/{user_id}/select-border")
+async def select_border(user_id: int, selection: SelectBorder):
+    """Select an owned border for the profile avatar"""
+    user = User.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    owned = set(parse_owned_borders(user.get('owned_borders')))
+    if selection.item_id not in owned:
+        raise HTTPException(status_code=400, detail="Border not owned")
+
+    User.update_profile(user_id, selected_border=selection.item_id)
+    user = User.get_by_id(user_id)
+    return {"message": "Border selected", "selected_border": user.get('selected_border')}
 
 # ============ TASK ROUTES ============
 
@@ -250,6 +421,21 @@ async def create_study_session(user_id: int, session: StudySessionCreate):
                                      session.start_time, session.end_time, session.task_id)
     if not new_session:
         raise HTTPException(status_code=500, detail="Error creating session")
+
+    user = User.get_by_id(user_id)
+    if user:
+        today = datetime.utcnow().date().isoformat()
+        today_total = StudySession.get_today_study_time(user_id)
+        if user.get('daily_goal') and today_total >= user.get('daily_goal', 0):
+            if user.get('last_goal_reward_date') != today:
+                reward_points = 20
+                User.update_profile(user_id,
+                                    points=(user.get('points', 0) + reward_points),
+                                    last_goal_reward_date=today)
+                new_session['goal_reward'] = {
+                    'message': 'Daily goal reached! +20 points awarded.',
+                    'points_awarded': reward_points
+                }
     return new_session
 
 @app.get("/api/study-sessions/{session_id}")

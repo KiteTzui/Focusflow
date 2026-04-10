@@ -39,6 +39,12 @@
           <option value="Active">Active</option>
           <option value="Done">Done</option>
         </select>
+        <select v-model="filterPriority" class="filter-select">
+          <option value="">All Priority</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
       </div>
       
       <div class="task-form">
@@ -122,6 +128,7 @@ export default {
     const loading = ref(true);
     const searchQuery = ref('');
     const filterStatus = ref('');
+    const filterPriority = ref('');
     const newTask = ref({
       title: '',
       description: '',
@@ -146,7 +153,8 @@ export default {
       return tasks.value.filter(task => {
         const matchesSearch = task.title.toLowerCase().includes(searchQuery.value.toLowerCase());
         const matchesStatus = !filterStatus.value || task.status === filterStatus.value;
-        return matchesSearch && matchesStatus;
+        const matchesPriority = !filterPriority.value || task.priority === filterPriority.value;
+        return matchesSearch && matchesStatus && matchesPriority;
       });
     });
 
@@ -218,6 +226,7 @@ export default {
       loading,
       searchQuery,
       filterStatus,
+      filterPriority,
       newTask,
       totalTasks,
       todoTasks,

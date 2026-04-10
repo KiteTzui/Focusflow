@@ -78,7 +78,7 @@ export default {
         if (response.data && response.data.user_id) {
           localStorage.setItem('user_id', response.data.user_id);
           localStorage.setItem('username', response.data.username);
-          router.push('/dashboard');
+          router.push({ path: '/dashboard', query: { welcome: 'true' } });
         }
       } catch (err) {
         error.value = err.response?.data?.detail || 'Login failed. Please try again.';

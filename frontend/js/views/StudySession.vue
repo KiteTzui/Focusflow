@@ -10,16 +10,22 @@
         <h2>Study Timer</h2>
         <p class="description">Start a study session to track your focus time</p>
         
+        <div class="session-summary">
+          <span class="summary-label">Current session</span>
+          <span class="summary-value">{{ currentTaskName }}</span>
+          <span class="summary-badge">{{ sessionStatus }}</span>
+        </div>
+
         <div class="task-selector">
-          <label>Select a task (optional)</label>
-          <select v-model="selectedTaskId" class="task-select">
-            <option value="">General Study Session</option>
+          <label for="task-select">Select task</label>
+          <select id="task-select" v-model="selectedTaskId">
+            <option value="">General study</option>
             <option v-for="task in tasks" :key="task.id" :value="task.id">
               {{ task.title }} ({{ task.status }})
             </option>
           </select>
         </div>
-        
+
         <div class="timer-display">
           <div class="time">{{ formattedTime }}</div>
           <p class="time-label">Hours : Minutes : Seconds</p>
@@ -140,12 +146,23 @@ export default {
       const hours = String(Math.floor(elapsedTime.value / 3600)).padStart(2, '0');
       const minutes = String(Math.floor((elapsedTime.value % 3600) / 60)).padStart(2, '0');
       const seconds = String(elapsedTime.value % 60).padStart(2, '0');
-      return `${hours} : ${minutes} : ${seconds}`;
+      return `${hours}:${minutes}:${seconds}`;
     });
 
     const studyProgressPercentage = computed(() => {
       const dailyGoal = 7200; // 2 hours in seconds
       return Math.min((todayStudyTime.value / dailyGoal) * 100, 100);
+    });
+
+    const currentTaskName = computed(() => {
+      const selected = tasks.value.find((task) => task.id === Number(selectedTaskId.value));
+      return selected ? selected.title : 'General Study Session';
+    });
+
+    const sessionStatus = computed(() => {
+      if (sessionActive.value) return 'Running';
+      if (elapsedTime.value > 0) return 'Paused';
+      return 'Ready';
     });
 
     const formatTime = (seconds) => {
@@ -306,6 +323,8 @@ export default {
       newDistraction,
       formattedTime,
       studyProgressPercentage,
+      currentTaskName,
+      sessionStatus,
       formatTime,
       formatTimeHMS,
       formatSessionDate,
@@ -360,6 +379,37 @@ export default {
   font-weight: 700;
   color: #1f2937;
   margin: 0 0 5px 0;
+}
+
+.session-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.summary-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2563eb;
+  text-transform: uppercase;
+}
+
+.summary-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.summary-badge {
+  margin-left: auto;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .description {

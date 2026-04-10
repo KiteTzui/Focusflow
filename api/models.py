@@ -59,14 +59,24 @@ class User:
         return dict(row) if row else None
 
     @staticmethod
-    def update_profile(user_id: int, level: str = None, streak: int = None, 
-                      daily_goal: int = None) -> bool:
+    def update_profile(user_id: int, username: str = None, email: str = None,
+                      level: str = None, streak: int = None, daily_goal: int = None,
+                      total_study_time: int = None, tasks_completed: int = None,
+                      points: int = None, last_check_in: str = None,
+                      selected_border: str = None, owned_borders: str = None,
+                      last_goal_reward_date: str = None) -> bool:
         """Update user profile"""
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
             updates = []
             params = []
+            if username:
+                updates.append('username = ?')
+                params.append(username)
+            if email:
+                updates.append('email = ?')
+                params.append(email)
             if level:
                 updates.append('level = ?')
                 params.append(level)
@@ -76,6 +86,27 @@ class User:
             if daily_goal is not None:
                 updates.append('daily_goal = ?')
                 params.append(daily_goal)
+            if total_study_time is not None:
+                updates.append('total_study_time = ?')
+                params.append(total_study_time)
+            if tasks_completed is not None:
+                updates.append('tasks_completed = ?')
+                params.append(tasks_completed)
+            if points is not None:
+                updates.append('points = ?')
+                params.append(points)
+            if last_check_in is not None:
+                updates.append('last_check_in = ?')
+                params.append(last_check_in)
+            if selected_border is not None:
+                updates.append('selected_border = ?')
+                params.append(selected_border)
+            if owned_borders is not None:
+                updates.append('owned_borders = ?')
+                params.append(owned_borders)
+            if last_goal_reward_date is not None:
+                updates.append('last_goal_reward_date = ?')
+                params.append(last_goal_reward_date)
             
             if updates:
                 params.append(user_id)
@@ -224,6 +255,21 @@ class StudySession:
         cursor = conn.cursor()
         cursor.execute(
             'SELECT COALESCE(SUM(duration_seconds), 0) as total FROM study_sessions WHERE user_id = ?',
+            (user_id,)
+        )
+        result = cursor.fetchone()
+        conn.close()
+        return result['total'] if result else 0
+
+    @staticmethod
+    def get_today_study_time(user_id: int) -> int:
+        """Get total study time for today in seconds"""
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''SELECT COALESCE(SUM(duration_seconds), 0) as total
+               FROM study_sessions
+               WHERE user_id = ? AND DATE(start_time) = DATE('now')''',
             (user_id,)
         )
         result = cursor.fetchone()

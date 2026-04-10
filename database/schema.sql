@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS users (
     total_study_time INTEGER DEFAULT 0,
     tasks_completed INTEGER DEFAULT 0,
     daily_goal INTEGER DEFAULT 7200,
+    points INTEGER DEFAULT 0,
+    last_check_in TEXT,
+    selected_border TEXT,
+    owned_borders TEXT DEFAULT '',
+    last_goal_reward_date TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
