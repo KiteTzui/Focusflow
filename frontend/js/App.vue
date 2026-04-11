@@ -1,4 +1,5 @@
 <template>
+  <Analytics />
   <div id="app" class="app">
     <div v-if="showSplash" class="splash-screen">
       <div class="splash-content">
@@ -26,12 +27,14 @@
 <script>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { Analytics } from '@vercel/analytics/vue';
 import Navigation from './components/Navigation.vue';
 
 export default {
   name: 'App',
   components: {
-    Navigation
+    Navigation,
+    Analytics
   },
   setup() {
     const route = useRoute();
